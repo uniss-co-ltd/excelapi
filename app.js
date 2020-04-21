@@ -4,6 +4,7 @@
     var multer = require('multer');
     var xlstojson = require("xls-to-json-lc");
     var xlsxtojson = require("xlsx-to-json-lc");
+    var https = require('https');
     
 
     app.use(bodyParser.json());  
@@ -66,6 +67,70 @@
             }
         })
        
+    });
+
+    // Configuring body parser middleware
+    app.use(bodyParser.urlencoded({ extended: false }));
+    app.use(bodyParser.json());
+
+    app.post('/requestfile', function(req, res) {
+        var options = {
+            hostname: 'api.box.com',
+            port: 443,
+            path: '/2.0/files/'+req.body.file_id+'/content',
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer '+req.body.token
+            }
+        }
+        const req2 = https.request(options, res2 => {
+            console.log(`statusCode box: ${res2.statusCode}`)
+            console.log(`download link: ${res2.headers.location}`)
+            var options2 = {
+                hostname: 'cclugo.info',
+                port: 443,
+                path: '/data?url='+res2.headers.location,
+                method: 'GET'
+            }
+            var req3 = https.request(options2, res3 => {
+                console.log(`statusCode cclugo: ${res3.statusCode}`)
+                //console.log(res3)
+                //console.dir(res3, { depth: null });
+                console.log('method: '+res3.method, 'url: '+res3.url, 'headers: '+res3.headers);
+                let body = '';
+                res3.on('data', (chunk) => {
+                    body += chunk;
+                });
+                res3.on('end', () => {
+                    console.log(body);
+                    res.send(body)
+                    //s.write('OK'); // s is req3
+                    //s.end(); 
+                });
+                // res3.on('data', d => {
+                //     process.stdout.write(d)
+                //     console.log(d)
+                // })
+            })
+            req3.on('error', error => {
+                console.error(error)
+            })
+            //console.log('req3: '+req3)
+
+            req3.end()
+            //console.log(res2)
+            //console.dir(res2, { depth: null });
+            // res2.on('data', d => {
+            //     process.stdout.write(d)
+            // })
+        })
+        req2.on('error', error => {
+            console.error(error)
+        })
+        req2.end()
+        
+        //res.send('body');
     });
 	
 	app.get('/',function(req,res){
